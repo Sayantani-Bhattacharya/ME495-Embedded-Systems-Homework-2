@@ -1,5 +1,5 @@
 <launch>
-  <arg name="use_jsp" default="gui" description="Which method to publish joint state: gui, jsp or none"/>
+  <arg name="use_jsp" default="jsp" description="Which method to publish joint state: gui, jsp or none"/>
   <arg name="rviz_config_name" default="none" description="Input the path to rviz config name"/>
 
   <!-- The robot_state_publisher reads the urdf from /robot_description parameter
@@ -15,8 +15,8 @@
   <!-- The joint state publisher will be launched with a gui, read the urdf from /robot_description
        and publish the joint values on /joint_states -->
   <node pkg="joint_state_publisher_gui" exec="joint_state_publisher_gui" if="$(eval '\'$(var use_jsp)\'==\'gui\'')"/>
-  <!-- <node pkg="joint_state_publisher" exec="joint_state_publisher_gui" if="$(eval '\'$(var use_jsp)\'==\'jsp\'')"/>
-  <node pkg="joint_state_publisher_gui" exec="joint_state_publisher_gui" if="$(eval '\'$(var use_jsp)\'==\'none\'')"/> -->
+  <!-- <node pkg="joint_state_publisher" exec="joint_state_publisher" if="$(eval '\'$(var use_jsp)\'==\'jsp\'')"/> -->
+  <!-- <node pkg="joint_state_publisher_gui" exec="joint_state_publisher" if="$(eval '\'$(var use_jsp)\'==\'none\'')"/>  -->
 
 
   <!-- rviz will enable us to see the robot -->
