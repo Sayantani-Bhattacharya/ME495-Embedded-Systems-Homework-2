@@ -1,0 +1,111 @@
+<robot name="unicycle" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Define properties for the link -->
+
+  <!-- Configured properties -->
+  <xacro:property name="platform_ground_height" value="10.0" />
+  <xacro:property name="wheel_radius" value="1.50" />
+  <xacro:property name="max_velocity" value="1.0" />
+  <xacro:property name="gravity_accel" value="1.0" />
+
+  <!-- Calculated properties -->
+  <xacro:property name="platform_height" value="${(platform_ground_height - 2*wheel_radius) * 0.06}" />  
+  <xacro:property name="cylinder_height" value="${(platform_ground_height - 2*wheel_radius) * 0.5}" />
+  <xacro:property name="base_block_height" value="${(platform_ground_height - 2*wheel_radius) * 0.3}" />
+  <xacro:property name="stem_height" value="${(platform_ground_height - 2*wheel_radius) * 0.1}" />
+
+  <!-- Fixed properties -->
+  <xacro:property name="platform_radius" value="3.0" />
+  <xacro:property name="cylinder_radius" value="0.30" />
+  <xacro:property name="stem_radius" value="0.40" />
+
+  <link name="platform">
+    <visual>
+      <origin xyz="0 0 ${platform_height/2}" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius = "${platform_radius}" length = "${platform_height}" />
+      </geometry>
+      <material name="Green">
+        <color rgba="0 1.0 0 1.0"/>
+      </material>
+    </visual>
+  </link> 
+
+  <link name="verticle_cylinder">
+    <visual>
+      <origin xyz="0 0 ${cylinder_height/2}" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius = "${cylinder_radius}" length = "${cylinder_height}" />
+      </geometry>
+      <material name="Green">
+        <color rgba="0 1.0 0 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <link name="base_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <box size="${base_block_height} ${base_block_height} ${base_block_height}" />
+      </geometry>
+      <material name="Cyan">
+        <color rgba="0 1.0 1.0 1.0"/>
+      </material>
+    </visual>
+  </link> 
+
+  <link name="stem">
+    <visual>
+      <origin xyz="0 0 ${-stem_height/2}" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius = "${stem_radius}" length = "${stem_height}" />
+      </geometry>
+      <material name="Red">
+        <color rgba="1.0 0 0 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <link name="wheel">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 1.57 0" />
+      <geometry>
+        <cylinder radius = "${wheel_radius}" length = "0.5" />
+      </geometry>
+      <material name="Black">
+        <color rgba="0 0 0 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="j0" type="continuous">
+    <origin xyz = "0 0 ${base_block_height/2}" rpy="0 0 0"/>
+    <parent link = "base_link"/>
+    <child link = "verticle_cylinder"/> 
+  </joint> 
+
+  <joint name="j1" type="revolute">
+    <origin xyz = "0 0 ${cylinder_height}" rpy="0 0 0"/>
+    <limit lower = "-1.57" upper = "1.57" effort = "10.0" velocity = "1.0" />
+    <axis xyz = "0 1 0" />
+    <parent link = "verticle_cylinder"/>
+    <child link = "platform"/> 
+  </joint> 
+
+  <joint name="j2" type="continuous">
+    <origin xyz = "0 0 -${base_block_height/2}" rpy="0 0 0"/>
+    <axis xyz = "0 0 1" />
+    <parent link = "base_link"/>       
+    <child link = "stem"/> 
+  </joint>
+
+  <joint name="j3" type="continuous">
+    <origin xyz = "0 0 ${-stem_height - wheel_radius}" rpy="0 0 0"/>    
+    <axis xyz = "1 0 0" />
+    <parent link = "stem"/>
+    <child link = "wheel"/> 
+  </joint>
+
+
+</robot>
