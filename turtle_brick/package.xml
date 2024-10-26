@@ -14,8 +14,16 @@
   <exec_depend>rviz2</exec_depend>
   <exec_depend>xacro</exec_depend>
   
+  <!-- do we need these 2 lines  -->
+  <!-- <exec_depend>ros2launch</exec_depend>
+  <exec_depend>turtle_brick_interfaces</exec_depend> -->
+
   <exec_depend>geometry_msgs</exec_depend>
   <build_depend>geometry_msgs</build_depend>
+
+  <exec_depend>nav_msgs</exec_depend>
+  <build_depend>nav_msgs</build_depend>
+
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
