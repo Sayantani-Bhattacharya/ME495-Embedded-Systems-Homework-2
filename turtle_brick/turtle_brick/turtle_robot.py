@@ -29,6 +29,11 @@ class turtle_robot(Node):
         # self.tilt_msg_sub = self.create_subscription(Tilt,'/tilt_msg', self.tilt_msg_sub_func, qos_profile=10 )
         self.turtle_pose_msg_sub = self.create_subscription(Pose,'/turtle1/pose', self.turtle_pose_sub_func, qos_profile=10 )
 
+        self.goal_pose = PoseStamped()
+        # self.tilt_msg = Tilt()
+        self.turtle_pose_msg = Pose()
+        
+
         # Transforms:
 
         # Static broadcasters publish on /tf_static. We will only need to publish this once.
@@ -58,54 +63,7 @@ class turtle_robot(Node):
         self.joint_positions[1] = 0.5
         self.joint_state.position = self.joint_positions
         self.joint_state_publisher.publish(self.joint_state)
-
-    def timer_callback(self):
-        # Dyn Transform
-        base = TransformStamped()
-        base.header.frame_id = 'odom'
-        base.child_frame_id = 'base_link'
-        time = self.get_clock().now().to_msg()
-        base.header.stamp = time
-
-        # Applying the robot motion here.
-        base.transform.translation = Vector3(x=float(self.turtle_pose_msg.x), y=float(self.turtle_pose_msg.y), z=0.0) 
-        self.broadcaster.sendTransform(base)
-
-        # JSP
-        self.joint_state.header.stamp = self.get_clock().now().to_msg()
-        self.joint_positions[1] = 0.02 
-        # wheel rotation here
-        theta_dummy = 0.02
-        self.joint_positions[3] = theta_dummy
-        self.joint_state.position = self.joint_positions
-        self.joint_state_publisher.publish(self.joint_state)
-
-        # Cmd pub
-        cmd_pub_msg = Twist()
-        self.linear_velocity = 0.0
-        self.angular_velocity = 0.0
-        cmd_pub_msg.linear = Vector3 ( x = self.linear_velocity, y= 0.0, z= 0.0)
-        cmd_pub_msg.angular = Vector3 ( x = 0.0, y= 0.0, z= self.angular_velocity)
-        self.cmd_publisher.publish(cmd_pub_msg)
-
-        # Odom publisher
-        # odom_pub_msg = Odometry()
-        # odom_pose = Point()
-        # odom_pose.x = 1
-        # odom_pose.y = 2
-        # odom_pose.z = 1
-        # odom_pub_msg.pose(odom_pose)   ->> prob is here !!
-        # odom_pub_msg.header.stamp = self.get_clock().now().to_msg()
-        # odom_pub_msg.header.frame_id = 'odom'
-        # odom_pub_msg.child_frame_id = 'base_link'
-        # # odom_pub_msg.pose.pose.orientation = Quaternion(
-        # #     x=0.0, y=0.0, z=math.sin(self.theta / 2.0), w=math.cos(self.theta / 2.0)
-        # # )
-        # # Twist same as cmd_vel
-        # # odom_pub_msg.twist.twist.linear = Vector3(x=self.linear_velocity, y=0.0, z=0.0)
-        # # odom_pub_msg.twist.twist.angular = Vector3(x=0.0, y=0.0, z=self.angular_velocity)
-        # self.odom_publisher.publish(odom_pub_msg)
-
+    
     def goal_pose_sub_func(self,msg):
         self.goal_pose = msg
 
@@ -121,6 +79,54 @@ class turtle_robot(Node):
         # 'theta': 'float',
         # 'linear_velocity': 'float',
         # 'angular_velocity': 'float'
+
+    def timer_callback(self):
+        # Dyn Transform
+        base = TransformStamped()
+        base.header.frame_id = 'odom'
+        base.child_frame_id = 'base_link'
+        time = self.get_clock().now().to_msg()
+        base.header.stamp = time
+        # self.get_logger().info('ffffffffffffffffffffff111111111111ffff Transform: world->odom')
+
+
+        # Applying the robot motion here.
+        base.transform.translation = Vector3 ( x = float(self.turtle_pose_msg.x), y = float(self.turtle_pose_msg.y), z=0.0) 
+        self.broadcaster.sendTransform(base)
+        # self.get_logger().info('ffffffffffffffffffffff111111111111ffff Transform: world->odom')
+
+
+        # JSP
+        self.joint_state.header.stamp = self.get_clock().now().to_msg()
+        self.joint_positions[1] = 0.02 
+        # wheel rotation here
+        theta_dummy = 0.02
+        self.joint_positions[3] = theta_dummy
+        self.joint_state.position = self.joint_positions
+        self.joint_state_publisher.publish(self.joint_state)
+
+        # Cmd pub
+        cmd_pub_msg = Twist()
+        cmd_pub_msg.linear = Vector3 ( x = float(self.turtle_pose_msg.x), y= float(self.turtle_pose_msg.y), z= 0.0)
+        cmd_pub_msg.angular = Vector3 ( x = 0.0, y= 0.0, z= self.turtle_pose_msg.angular_velocity )
+        self.cmd_publisher.publish(cmd_pub_msg)
+
+        # # Odom publisher
+        # odom_pub_msg = Odometry()
+        # odom_pose = Point()
+        # odom_pose.x = 1
+        # odom_pose.y = 2
+        # odom_pose.z = 1
+        # odom_pub_msg.pose.pose.position(odom_pose)  # # (odom_pose)   ->> prob is here !!
+        # odom_pub_msg.header.stamp = self.get_clock().now().to_msg()
+        # odom_pub_msg.header.frame_id = 'odom'
+        # odom_pub_msg.child_frame_id = 'base_link'
+        # # Twist same as cmd_vel
+        # # odom_pub_msg.twist.twist.linear = Vector3(x=self.linear_velocity, y=0.0, z=0.0)
+        # # odom_pub_msg.twist.twist.angular = Vector3(x=0.0, y=0.0, z=self.angular_velocity)
+        # self.odom_publisher.publish(odom_pub_msg)
+
+    
 
 def main(args=None):
     rclpy.init(args=args)
