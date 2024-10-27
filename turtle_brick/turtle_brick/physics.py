@@ -1,7 +1,7 @@
 class World:
     """Keep track of the physics of the world."""
 
-    def __init__(self, brick, gravity, radius, dt):
+    def __init__(self, brick, gravity=9.81, radius=2.0, dt=0.004):
         """
         Initialize the world.
 
@@ -11,12 +11,12 @@ class World:
         radius - the radius of the platform
         dt - timestep in seconds of the physics simulation
         """
-        self.x = 0
-        self.y = 0 
-        self.z = 0
-        self.gravity = 9.81
-        self.platform_radius = 2.0
-        self.dt = 0.1
+        self.x = brick.x
+        self.y = brick.y
+        self.z = brick.z
+        self.gravity = gravity
+        self.platform_radius = radius
+        self.dt = dt
 
     @property
     def brick(self):
