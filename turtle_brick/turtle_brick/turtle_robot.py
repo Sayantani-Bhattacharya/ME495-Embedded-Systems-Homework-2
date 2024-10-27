@@ -75,8 +75,6 @@ class turtle_robot(Node):
 
     def turtle_pose_sub_func(self,msg):
         self.turtle_pose_msg = msg
-        # self.get_logger().info(f"Reached Odom point: x,y,z {msg.x}")  
-
         # 'x': 'float',
         # 'y': 'float',
         # 'theta': 'float',

@@ -7,7 +7,7 @@ from builtin_interfaces.msg import Duration
 from turtle_brick.physics import World
 from tf2_ros import TransformBroadcaster
 from geometry_msgs.msg import TransformStamped, Vector3
-
+from turtle_brick_interfaces.srv import Place
 import time
 
 class arena(Node):
@@ -15,6 +15,8 @@ class arena(Node):
     def __init__(self):
         super().__init__('arena') 
         self.frequency = 0.004
+        self.place = self.create_service(Place, "place", self.place_func)   
+        self.brick = Brick() 
 
         # Marker: Walls
         markerQoS = QoSProfile(depth=10, durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
@@ -66,9 +68,7 @@ class arena(Node):
         wall_1.pose.position.z = position[2]
         return(wall_1)
     
-
-
-    def brick_define(self):
+    def brick_marker_define(self, pose):
         # world = World()
         # self.brick_location = world.brick()
         brick_marker = Marker()
@@ -91,10 +91,10 @@ class arena(Node):
         # brick_marker.pose.position.x = self.brick_location.x
         # brick_marker.pose.position.y = self.brick_location.y
 
-        brick_marker.pose.position.x = 0.0
-        brick_marker.pose.position.y = 0.0
+        brick_marker.pose.position.x = pose.x
+        brick_marker.pose.position.y = pose.y
         # Z needs to be updated.
-        brick_marker.pose.position.z = 2.0
+        brick_marker.pose.position.z = pose.z
 
         brick_marker.color.r = 0.80
         brick_marker.color.g = 0.522
@@ -102,28 +102,43 @@ class arena(Node):
         brick_marker.color.a = 1.0
         self.pub5.publish(brick_marker)
 
-    def brick(self, x, y, z):
-        self.x = x
-        self.y = y
-        self.z = z
-
-    def timer_callback(self):
-        # self.get_logger().info(f"Transform: world->odom{self.brick_location.x}")
-
+    def place_func(self, request, response):
+        self.brick_init_pose = request.pose
+        # self.brick = Brick(self.brick_init_pose.x, self.brick_init_pose.y, self.brick_init_pose.z)
         # Brick transform
         base = TransformStamped()
         base.header.frame_id = 'world'
         base.child_frame_id = 'brick'
         time = self.get_clock().now().to_msg()
         base.header.stamp = time
-        # Applying the robot motion here.
+        self.get_logger().info("Brick initialised") 
+        self.brick.exists = True        
+        base.transform.translation = Vector3 ( x = float(self.brick_init_pose.x), y = float(self.brick_init_pose.y), z=float(self.brick_init_pose.z)) 
+        self.broadcaster.sendTransform(base)
+        self.brick.transform_setter(base)
+        self.brick_marker_define(self.brick_init_pose)        
+        return response
+    
+    # Applying the robot motion here.
         # brick = self.brick(0.0,0.0,0.0)
         # world = World(brick=brick, gravity=9.81, radius=2.0, dt=self.frequency)
         # self.brick_location = world.brick()
-        base.transform.translation = Vector3 ( x = float(0), y = float(0), z=0.0) 
-        self.broadcaster.sendTransform(base)
 
-        self.brick_define()
+    def timer_callback(self):
+        if(self.brick.exists):
+            time = self.get_clock().now().to_msg()
+            self.brick.base.header.stamp = time
+            self.broadcaster.sendTransform(self.brick.base)
+
+class Brick():
+
+    def __init__(self):
+        self.exists = False
+    
+    def transform_setter(self, base):
+        self.base = base
+
+    
 
 def main(args=None):
     rclpy.init(args=args)
