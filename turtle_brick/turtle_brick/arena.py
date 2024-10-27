@@ -23,9 +23,9 @@ class arena(Node):
         self.m.id = 1
         self.m.type = Marker.CUBE
         self.m.action = Marker.ADD
-        height = 1.0
+        height = 1.5
         length = 11.0
-        thickness = 0.50
+        thickness = 0.20
         self.m.scale.x = thickness
         self.m.scale.y = length
         self.m.scale.z = height
@@ -36,19 +36,19 @@ class arena(Node):
         self.m.pose.orientation.y = 0.0
         self.m.pose.orientation.z = 0.0
         self.m.pose.orientation.w = 0.0
-        self.m.color.r = 0.80
-        self.m.color.g = 0.522
-        self.m.color.b = 0.349
-        self.m.color.a = 1.0
+        self.m.color.r = 0.615
+        self.m.color.g = 0.20
+        self.m.color.b = 1.0
+        self.m.color.a = 0.70
         self.pub1.publish(self.m)
 
         # Marker: Wall 2
         markerQoS = QoSProfile(depth=10, durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
         self.pub2 = self.create_publisher(Marker, 'visualization_marker', markerQoS)
         self.m.id = 2
-        height = 1.0
+        height = 1.5
         length = 11.0
-        thickness = 0.50
+        thickness = 0.20
         self.m.scale.x = thickness
         self.m.scale.y = length
         self.m.scale.z = height
@@ -61,9 +61,9 @@ class arena(Node):
         markerQoS = QoSProfile(depth=10, durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
         self.pub3 = self.create_publisher(Marker, 'visualization_marker', markerQoS)
         self.m.id = 3
-        height = 1.0
+        height = 1.5
         length = 11.0
-        thickness = 0.50
+        thickness = 0.20
         self.m.scale.x = length
         self.m.scale.y = thickness
         self.m.scale.z = height
@@ -77,9 +77,9 @@ class arena(Node):
         markerQoS = QoSProfile(depth=10, durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
         self.pub4 = self.create_publisher(Marker, 'visualization_marker', markerQoS)
         self.m.id = 4
-        height = 1.0
+        height = 1.5
         length = 11.0
-        thickness = 0.50
+        thickness = 0.20
         self.m.scale.x = length
         self.m.scale.y = thickness
         self.m.scale.z = height

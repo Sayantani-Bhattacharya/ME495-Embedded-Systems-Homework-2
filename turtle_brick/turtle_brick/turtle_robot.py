@@ -43,6 +43,10 @@ class turtle_robot(Node):
         world_base_tf.child_frame_id = 'odom'
         world_base_tf.transform.translation.x = -5.0
         world_base_tf.transform.translation.y = -5.0
+        # height of half box, full stem, 2 radius.: set this from yaml later.
+        wheel_radius = 0.3
+        platform_ground_height = 1.8
+        world_base_tf.transform.translation.z = (platform_ground_height - 2*wheel_radius) * 0.15 + (platform_ground_height - 2*wheel_radius) * 0.1 + 2*wheel_radius
         self.static_broadcaster.sendTransform(world_base_tf)
         self.get_logger().info('Static Transform: world->odom')
 
