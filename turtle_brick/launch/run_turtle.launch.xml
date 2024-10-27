@@ -7,6 +7,8 @@
         <!-- <param name="velocity" value="1.5" /> -->
         <!-- <remap from="cmd_vel" to="turtle1/cmd_vel" /> -->
    <!-- </node> -->
+
+   <node pkg="turtle_brick" exec="arena" name="arena" />
   
     <include file="$(find-pkg-share turtle_brick)/show_turtle.launch.xml">
         <!-- <arg name="robot_name" value="my_robot"/> -->

@@ -19,7 +19,6 @@ class turtle_robot(Node):
     def __init__(self):
         super().__init__('turtle_robot') 
         self.frequency = 0.01
-        self.reset_future = 0
         self.joint_state_publisher = self.create_publisher(JointState, '/joint_states', 10)        
         #callback_group=self.callBackGrp
         self.odom_publisher = self.create_publisher(Odometry, '/odom', 10)
