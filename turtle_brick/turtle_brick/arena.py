@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
+from enum import Enum
 from visualization_msgs.msg import Marker, MarkerArray
 from rclpy.qos import QoSDurabilityPolicy, QoSProfile
 from builtin_interfaces.msg import Duration
 from turtle_brick.physics import World
 from tf2_ros import TransformBroadcaster
 from geometry_msgs.msg import TransformStamped, Vector3
-from turtle_brick_interfaces.srv import Place
+from turtle_brick_interfaces.srv import Place, Gravity
 import time
 
 class arena(Node):
@@ -15,8 +16,9 @@ class arena(Node):
     def __init__(self):
         super().__init__('arena') 
         self.frequency = 0.004
-        self.place = self.create_service(Place, "place", self.place_func)   
-        self.brick = Brick() 
+        self.place = self.create_service(Place, "place", self.place_func) 
+        self.drop = self.create_service(Gravity, "drop", self.drop_func)  
+        self.brick = Brick()         
 
         # Marker: Walls
         markerQoS = QoSProfile(depth=10, durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
@@ -79,11 +81,11 @@ class arena(Node):
         brick_marker.id = 5
         brick_marker.type = Marker.CUBE
         brick_marker.action = Marker.ADD
-        height = 0.5
-        length = 0.20
+        height = 0.20
+        length = 0.50
         thickness = 0.20
-        brick_marker.scale.x = thickness
-        brick_marker.scale.y = length
+        brick_marker.scale.x = length
+        brick_marker.scale.y = thickness
         brick_marker.scale.z = height
 
         # Extract from physics
@@ -104,7 +106,6 @@ class arena(Node):
 
     def place_func(self, request, response):
         self.brick_init_pose = request.pose
-        # self.brick = Brick(self.brick_init_pose.x, self.brick_init_pose.y, self.brick_init_pose.z)
         # Brick transform
         base = TransformStamped()
         base.header.frame_id = 'world'
@@ -112,33 +113,54 @@ class arena(Node):
         time = self.get_clock().now().to_msg()
         base.header.stamp = time
         self.get_logger().info("Brick initialised") 
-        self.brick.exists = True        
+        self.brick.exists = True  
+        self.brick.update_state(states=State.EXISTS)      
         base.transform.translation = Vector3 ( x = float(self.brick_init_pose.x), y = float(self.brick_init_pose.y), z=float(self.brick_init_pose.z)) 
         self.broadcaster.sendTransform(base)
         self.brick.transform_setter(base)
         self.brick_marker_define(self.brick_init_pose)        
         return response
-    
-    # Applying the robot motion here.
-        # brick = self.brick(0.0,0.0,0.0)
-        # world = World(brick=brick, gravity=9.81, radius=2.0, dt=self.frequency)
-        # self.brick_location = world.brick()
+
+    def drop_func(self, request, response):
+        gravity = float(request.gravity.data)
+        self.get_logger().info(f"Started dropping 2 with val {request.gravity.data}")
+        # self.brick_init_pose will not exist if place is not called before drop.
+        brick_pose = []
+        self.world = World(brick_pose=[self.brick_init_pose.x,self.brick_init_pose.y,self.brick_init_pose.z], gravity=gravity, dt = self.frequency)
+        updated_brick_pose = self.world.drop()
+        self.brick.state = State.FALLING
+        self.get_logger().info(f"Started dropping with val {request.gravity.data}")
+        # update transforms
+        # and markers
+        # Setting the new pose
+        self.world.brick = updated_brick_pose
+        return response
 
     def timer_callback(self):
-        if(self.brick.exists):
+        if (self.brick.state == State.EXISTS):
             time = self.get_clock().now().to_msg()
             self.brick.base.header.stamp = time
             self.broadcaster.sendTransform(self.brick.base)
+        elif (self.brick.state == State.FALLING):
+            self.get_logger().info("Started dropping here also")
+            pass
+            # fall till cases !
+
+class State(Enum):
+    ABSENT = 0
+    EXISTS = 1
+    FALLING = 2  
 
 class Brick():
-
     def __init__(self):
         self.exists = False
+        self.state = State.ABSENT
+
+    def update_state(self, states):
+        self.state = states
     
     def transform_setter(self, base):
         self.base = base
-
-    
 
 def main(args=None):
     rclpy.init(args=args)

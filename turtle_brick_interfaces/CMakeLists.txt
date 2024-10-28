@@ -17,6 +17,7 @@ find_package(rosidl_default_generators REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/Tilt.srv"
   "srv/Place.srv"
+  "srv/Gravity.srv"
   DEPENDENCIES
   turtlesim
   geometry_msgs
