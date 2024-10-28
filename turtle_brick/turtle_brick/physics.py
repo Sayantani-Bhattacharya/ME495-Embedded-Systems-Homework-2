@@ -46,7 +46,7 @@ class World:
         """
         updated_brick_pose = [0.0, 0.0, 0.0]
         # From equations of motion
-        self.z += ( self.dt**2 ) * self.gravity/2.0
+        self.z = self.z - ( ( self.dt**2 ) * self.gravity/2.0 )
         updated_brick_pose[0] = self.x
         updated_brick_pose[1] = self.y
         updated_brick_pose[2] = self.z

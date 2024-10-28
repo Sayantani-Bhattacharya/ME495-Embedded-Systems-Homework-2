@@ -88,15 +88,10 @@ class arena(Node):
         brick_marker.scale.y = thickness
         brick_marker.scale.z = height
 
-        # Extract from physics
-        # self.get_logger().info(f"ffffffffffffffffffffff111111111111ffff Transform: world->odom{self.brick_location.x}")
-        # brick_marker.pose.position.x = self.brick_location.x
-        # brick_marker.pose.position.y = self.brick_location.y
-
-        brick_marker.pose.position.x = pose.x
-        brick_marker.pose.position.y = pose.y
+        brick_marker.pose.position.x = pose[0]
+        brick_marker.pose.position.y = pose[1]
         # Z needs to be updated.
-        brick_marker.pose.position.z = pose.z
+        brick_marker.pose.position.z = pose[2]
 
         brick_marker.color.r = 0.80
         brick_marker.color.g = 0.522
@@ -118,32 +113,41 @@ class arena(Node):
         base.transform.translation = Vector3 ( x = float(self.brick_init_pose.x), y = float(self.brick_init_pose.y), z=float(self.brick_init_pose.z)) 
         self.broadcaster.sendTransform(base)
         self.brick.transform_setter(base)
-        self.brick_marker_define(self.brick_init_pose)        
+        self.brick_marker_define([self.brick_init_pose.x,self.brick_init_pose.y,self.brick_init_pose.z])        
         return response
 
     def drop_func(self, request, response):
         gravity = float(request.gravity.data)
-        self.get_logger().info(f"Started dropping 2 with val {request.gravity.data}")
-        # self.brick_init_pose will not exist if place is not called before drop.
-        brick_pose = []
-        self.world = World(brick_pose=[self.brick_init_pose.x,self.brick_init_pose.y,self.brick_init_pose.z], gravity=gravity, dt = self.frequency)
-        updated_brick_pose = self.world.drop()
         self.brick.state = State.FALLING
-        self.get_logger().info(f"Started dropping with val {request.gravity.data}")
-        # update transforms
-        # and markers
-        # Setting the new pose
-        self.world.brick = updated_brick_pose
+        # self.brick_init_pose will not exist if place is not called before drop.
+        self.world = World(brick_pose=[self.brick_init_pose.x,self.brick_init_pose.y,self.brick_init_pose.z], gravity=gravity, dt = self.frequency)        
         return response
 
     def timer_callback(self):
+
         if (self.brick.state == State.EXISTS):
             time = self.get_clock().now().to_msg()
             self.brick.base.header.stamp = time
             self.broadcaster.sendTransform(self.brick.base)
-        elif (self.brick.state == State.FALLING):
-            self.get_logger().info("Started dropping here also")
-            pass
+
+        elif (self.brick.state == State.FALLING):            
+            # Pose update
+            updated_brick_pose = self.world.drop()
+            self.get_logger().info(f"Started dropping at x: {updated_brick_pose[0]} y: {updated_brick_pose[1]} and z {updated_brick_pose[2]}")        
+            # Setting the new pose
+            self.world.brick = updated_brick_pose
+            # Tranform update
+            base = TransformStamped()
+            base.header.frame_id = 'world'
+            base.child_frame_id = 'brick'
+            time = self.get_clock().now().to_msg()
+            base.header.stamp = time       
+            base.transform.translation = Vector3 ( x = float(updated_brick_pose[0]), y = float(updated_brick_pose[1]), z=float(updated_brick_pose[2])) 
+            self.broadcaster.sendTransform(base)
+            self.brick.transform_setter(base)        
+            # Marker update
+            self.brick_marker_define(updated_brick_pose)
+
             # fall till cases !
 
 class State(Enum):
