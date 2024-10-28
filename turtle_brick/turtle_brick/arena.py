@@ -20,7 +20,7 @@ class arena(Node):
         self.drop = self.create_service(Gravity, "drop", self.drop_func)  
         self.brick = Brick()         
 
-        # Marker: Walls
+        # Marker Array: Walls
         markerQoS = QoSProfile(depth=10, durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
         self.pub1 = self.create_publisher(MarkerArray, 'visualization_marker_array', markerQoS)
         self.m_array = MarkerArray()
@@ -71,10 +71,7 @@ class arena(Node):
         return(wall_1)
     
     def brick_marker_define(self, pose):
-        # world = World()
-        # self.brick_location = world.brick()
-        brick_marker = Marker()
-        # Publish brick marker.          
+        brick_marker = Marker()          
         brick_marker.header.frame_id = 'world'
         brick_marker.header.stamp = self.get_clock().now().to_msg()
         brick_marker.lifetime = Duration(sec=0, nanosec=0) 
@@ -90,7 +87,6 @@ class arena(Node):
 
         brick_marker.pose.position.x = pose[0]
         brick_marker.pose.position.y = pose[1]
-        # Z needs to be updated.
         brick_marker.pose.position.z = pose[2]
 
         brick_marker.color.r = 0.80
@@ -132,28 +128,56 @@ class arena(Node):
 
         elif (self.brick.state == State.FALLING):            
             # Pose update
-            updated_brick_pose = self.world.drop()
-            self.get_logger().info(f"Started dropping at x: {updated_brick_pose[0]} y: {updated_brick_pose[1]} and z {updated_brick_pose[2]}")        
+            self.updated_brick_pose = self.world.drop()
+            self.get_logger().info(f"Started dropping at x: {self.updated_brick_pose[0]} y: {self.updated_brick_pose[1]} and z {self.updated_brick_pose[2]}")  
+            if (self.updated_brick_pose[2] <= 0.6) :
+               self.get_logger().info(f"Stopped dropping ")
+               self.updated_brick_pose[2] = 0.0
+               self.brick.state = State.DROPPED_ON_GROUND                
+            else:
+                pass
             # Setting the new pose
-            self.world.brick = updated_brick_pose
+            self.world.brick = self.updated_brick_pose
             # Tranform update
             base = TransformStamped()
             base.header.frame_id = 'world'
             base.child_frame_id = 'brick'
             time = self.get_clock().now().to_msg()
             base.header.stamp = time       
-            base.transform.translation = Vector3 ( x = float(updated_brick_pose[0]), y = float(updated_brick_pose[1]), z=float(updated_brick_pose[2])) 
+            base.transform.translation = Vector3 ( x = float(self.updated_brick_pose[0]), y = float(self.updated_brick_pose[1]), z=float(self.updated_brick_pose[2])) 
             self.broadcaster.sendTransform(base)
             self.brick.transform_setter(base)        
             # Marker update
-            self.brick_marker_define(updated_brick_pose)
+            self.brick_marker_define(self.updated_brick_pose)
+
+        elif(self.brick.state == State.DROPPED_ON_GROUND):
+            # To keep it on ground.
+            # Tranform update
+            self.get_logger().info(f"Stopped dropping at x: {self.updated_brick_pose[0]} y: {self.updated_brick_pose[1]} and z {self.updated_brick_pose[2]}")  
+            base = TransformStamped()
+            base.header.frame_id = 'world'
+            base.child_frame_id = 'brick'
+            time = self.get_clock().now().to_msg()
+            base.header.stamp = time       
+            base.transform.translation = Vector3 ( x = float(self.updated_brick_pose[0]), y = float(self.updated_brick_pose[1]), z=float(self.updated_brick_pose[2])) 
+            self.broadcaster.sendTransform(base)
+            self.brick.transform_setter(base)        
+            # Marker update
+            self.brick_marker_define(self.updated_brick_pose)
+
+
 
             # fall till cases !
+
 
 class State(Enum):
     ABSENT = 0
     EXISTS = 1
     FALLING = 2  
+    DROPPED_ON_PLATFORM = 3
+    DROPPED_ON_GROUND = 4
+    SLIPPING = 5
+    FLOATING = 6
 
 class Brick():
     def __init__(self):
