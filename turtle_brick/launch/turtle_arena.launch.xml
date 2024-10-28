@@ -1,0 +1,9 @@
+<launch>   
+
+   <node pkg="turtle_brick" exec="catcher" name="catcher" />
+  
+    <include file="$(find-pkg-share turtle_brick)/run_turtle.launch.xml">
+        <!-- <arg name="robot_name" value="my_robot"/> -->
+    </include>
+
+</launch>

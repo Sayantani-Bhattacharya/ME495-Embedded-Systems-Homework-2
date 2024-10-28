@@ -12,6 +12,7 @@ setup(
         ('share/' + package_name, ['package.xml',
                                    'launch/show_turtle.launch.xml',
                                    'launch/run_turtle.launch.xml',
+                                   'launch/turtle_arena.launch.xml',
                                    'launch/show_turtle.launch.py',
                                    'urdf/turtle.urdf.xacro',
                                    'config/rviz_config.rviz']),
@@ -27,7 +28,8 @@ setup(
     entry_points={
         'console_scripts': [
             'turtle_robot = turtle_brick.turtle_robot:main',
-            'arena = turtle_brick.arena:main'
+            'arena = turtle_brick.arena:main',
+            'catcher = turtle_brick.catcher:main'
         ],
     },
 )
