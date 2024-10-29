@@ -12,9 +12,10 @@ import time
 class robotState(Enum):
     WAIT = 0,
     MOVE = 1,
-    CATCHED = 2,
-    TILT = 3,
-    SLIPPED = 4
+    WAITING_FOR_BRICK = 2,
+    CATCHED = 3,
+    TILT = 4,
+    SLIPPED = 5
    
 class catcher(Node):
 
@@ -86,7 +87,7 @@ class catcher(Node):
         if (self.brick_exists and self.robot_state == robotState.WAIT):
             self.currZ = brick_transform.transform.translation.z
             if (self.init_brick_pose - self.currZ >= 0.09):
-                self.get_logger().info("Started to Drop !" )
+                self.get_logger().info("Started to Drop !", once=True )
                 self.robot_state = robotState.MOVE
 
         # Publish the goal pose.
@@ -95,29 +96,31 @@ class catcher(Node):
             goal_pose_pub_msg.header.stamp = self.get_clock().now().to_msg()
             dist = math.sqrt( brick_platform_transform.transform.translation.y **2 + brick_platform_transform.transform.translation.x **2 )
             if (dist <= 0.4):
-                self.robot_state = robotState.CATCHED
-                self.get_logger().info("Catched [Platform motion] !" )
+                self.robot_state = robotState.WAITING_FOR_BRICK
+                self.get_logger().info("Catched [Platform motion] !", once=True )
                 goal_pose_pub_msg.pose.position.x = brick_transform.transform.translation.x
                 goal_pose_pub_msg.pose.position.y = brick_transform.transform.translation.y
                 self.goal_pose_pub.publish(goal_pose_pub_msg) 
 
             # Stick brick to robot.
             elif (brick_transform != [-1.0 , -1.0, -1.0] and self.robot_state != robotState.CATCHED):
-                self.get_logger().info("About to Catch!" )
+                self.get_logger().info("About to Catch!", once=True )
                 goal_pose_pub_msg.pose.position.x = brick_transform.transform.translation.x
                 goal_pose_pub_msg.pose.position.y = brick_transform.transform.translation.y
                 goal_pose_pub_msg.pose.position.z = brick_transform.transform.translation.z
                 self.goal_pose_pub.publish(goal_pose_pub_msg) 
                 
-        elif(self.robot_state == robotState.CATCHED):
-            goal_pose_pub_msg = PoseStamped()
-            goal_pose_pub_msg.header.stamp = self.get_clock().now().to_msg()
-            self.get_logger().info("Catched [Platform motion] Platform stopped !" )
-            goal_pose_pub_msg.pose.position.x = brick_transform.transform.translation.x
-            goal_pose_pub_msg.pose.position.y = brick_transform.transform.translation.y
-            # goal_pose_pub_msg.pose.position.z = 
-            self.goal_pose_pub.publish(goal_pose_pub_msg)
-
+        elif(self.robot_state == robotState.WAITING_FOR_BRICK):            
+            if (brick_transform.transform.translation.z <= 0.2):
+                self.get_logger().info(" Catched !", once=True )
+                self.robot_state = robotState.CATCHED
+            else:
+                goal_pose_pub_msg = PoseStamped()
+                goal_pose_pub_msg.header.stamp = self.get_clock().now().to_msg()
+                self.get_logger().info(" Waiting for brick to drop [Platform motion] Platform stopped !", once=True )
+                goal_pose_pub_msg.pose.position.x = brick_transform.transform.translation.x
+                goal_pose_pub_msg.pose.position.y = brick_transform.transform.translation.y
+                self.goal_pose_pub.publish(goal_pose_pub_msg)
 
 
 def main(args=None):

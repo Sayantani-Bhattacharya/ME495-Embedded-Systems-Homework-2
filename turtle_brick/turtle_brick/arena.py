@@ -139,7 +139,7 @@ class arena(Node):
         gravity = float(request.gravity.data)
         self.brick.state = State.FALLING
         # self.brick_init_pose will not exist if place is not called before drop.
-        self.world = World(brick_pose=[self.brick_init_pose.x,self.brick_init_pose.y,self.brick_init_pose.z], gravity=gravity, dt = self.frequency)        
+        self.world = World(brick_pose=[self.brick_init_pose.x,self.brick_init_pose.y,self.brick_init_pose.z], gravity=gravity)        
         return response
 
     def timer_callback(self):
@@ -155,17 +155,33 @@ class arena(Node):
         elif (self.brick.state == State.FALLING):            
             # Pose update
             self.updated_brick_pose = self.world.drop()
-            # self.get_logger().info(f"Started dropping at x: {self.updated_brick_pose[0]} y: {self.updated_brick_pose[1]} and z {self.updated_brick_pose[2]}")  
-            if (brick_platform_transform.transform.translation.z <= 0.03):                
-                self.brick.state == State.DROPPED_ON_PLATFORM            
-            if (self.updated_brick_pose[2] <= 0.6) :
-               self.get_logger().info(f"Stopped dropping ")
+            if (brick_platform_transform.transform.translation.z <= 0.1): 
+                self.brick.state == State.DROPPED_ON_PLATFORM  
+            elif (self.updated_brick_pose[2] <= 0.6) :
+               self.get_logger().info(f"Stopped dropping ", once=True)
                self.updated_brick_pose[2] = 0.0
                self.brick.state = State.DROPPED_ON_GROUND                
-            else:
-                pass
-            # Setting the new pose
-            self.world.brick = self.updated_brick_pose
+            else:               
+                self.get_logger().info(f"Dropping ", once=True)
+                # Setting the new pose
+                self.world.brick = self.updated_brick_pose
+                # Tranform update
+                base = TransformStamped()
+                base.header.frame_id = 'world'
+                base.child_frame_id = 'brick'
+                time = self.get_clock().now().to_msg()
+                base.header.stamp = time       
+                base.transform.translation = Vector3 ( x = float(self.updated_brick_pose[0]), y = float(self.updated_brick_pose[1]), z=float(self.updated_brick_pose[2])) 
+                self.broadcaster.sendTransform(base)
+                self.brick.transform_setter(base)        
+                # Marker update
+                self.brick_marker_define(self.updated_brick_pose)
+
+        elif (self.brick.state == State.DROPPED_ON_PLATFORM):
+            self.get_logger().info("Catched [Brick] !", once=True)
+            # Setting the new pose, offset : platform height/2 n brick edge/2
+            self.updated_brick_pose[2] = float(platform_transform.transform.translation.z + 0.2)
+            self.world.brick = self.updated_brick_pose  
             # Tranform update
             base = TransformStamped()
             base.header.frame_id = 'world'
@@ -176,33 +192,11 @@ class arena(Node):
             self.broadcaster.sendTransform(base)
             self.brick.transform_setter(base)        
             # Marker update
-            self.brick_marker_define(self.updated_brick_pose)
-
-        elif (self.brick.state == State.DROPPED_ON_PLATFORM):
-            self.get_logger().info("Catched [Brick] !" )
-            # # Setting the new pose
-
-            # # self.world.brick = self.updated_brick_pose ///
-
-            # # Tranform update
-            # base = TransformStamped()
-            # base.header.frame_id = 'platform'
-            # base.child_frame_id = 'brick'
-
-            # # platform_transform --- use this here.
-            # time = self.get_clock().now().to_msg()
-            # base.header.stamp = time       
-            # base.transform.translation = Vector3 ( x = float(self.updated_brick_pose[0]), y = float(self.updated_brick_pose[1]), z=float(self.updated_brick_pose[2])) 
-            # self.broadcaster.sendTransform(base)
-            # self.brick.transform_setter(base)        
-            # # Marker update
-            # self.brick_marker_define(self.updated_brick_pose)
-
+            self.brick_marker_define(float(self.updated_brick_pose))
 
         elif(self.brick.state == State.DROPPED_ON_GROUND):
-            # To keep it on ground.
+            self.get_logger().info("Dropped on gound [Brick] !", once=True)
             # Tranform update
-            # self.get_logger().info(f"Stopped dropping at x: {self.updated_brick_pose[0]} y: {self.updated_brick_pose[1]} and z {self.updated_brick_pose[2]}")  
             base = TransformStamped()
             base.header.frame_id = 'world'
             base.child_frame_id = 'brick'

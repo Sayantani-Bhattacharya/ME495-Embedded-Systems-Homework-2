@@ -1,7 +1,7 @@
 class World:
     """Keep track of the physics of the world."""
 
-    def __init__(self, brick_pose, gravity=9.81, radius=2.0, dt=0.004):
+    def __init__(self, brick_pose, gravity=9.81, radius=2.0, dt=0.06):
         """
         Initialize the world.
 

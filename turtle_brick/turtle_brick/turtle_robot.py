@@ -19,7 +19,7 @@ class turtle_robot(Node):
     def __init__(self):
         super().__init__('turtle_robot') 
         self.frequency = 0.004
-        self.max_velocity = 3
+        self.max_velocity = 10
 
         self.joint_state_publisher = self.create_publisher(JointState, '/joint_states', 10)        
         #callback_group=self.callBackGrp
@@ -67,11 +67,11 @@ class turtle_robot(Node):
         # till reached goal tollerance          
         dist = math.sqrt( (msg.pose.position.y - self.current_pose.y ) **2 +(msg.pose.position.x - self.current_pose.x ) **2 )
         if (dist <= 0.4):
-            self.get_logger().info("Stopping the platform !")
+            self.get_logger().info("Stopping the platform !", once=True)
             linear_x = 0.0
             linear_y = 0.0
         else:
-            self.get_logger().info("Moving the platform [Turtle-node] !")
+            self.get_logger().info("Moving the platform [Turtle-node] !", once=True)
             theta = math.atan( (msg.pose.position.y - self.current_pose.y) / (msg.pose.position.x - self.current_pose.x ) ) 
             linear_x = self.max_velocity * math.cos(theta)
             linear_y = self.max_velocity * math.sin(theta)
@@ -96,7 +96,6 @@ class turtle_robot(Node):
         time = self.get_clock().now().to_msg()
         base.header.stamp = time
         # Applying the robot motion here.
-        self.get_logger().info(f"the turtle cur pose is x: {msg.x - 5.54} and y: {msg.y - 5.54}")
         base.transform.translation = Vector3 (x = float(msg.x - 5.54), y = float(msg.y - 5.54), z= 0.0) 
         self.broadcaster.sendTransform(base)
         # Odom publisher
