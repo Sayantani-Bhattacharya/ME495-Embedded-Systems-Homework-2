@@ -41,8 +41,8 @@ class turtle_robot(Node):
         world_base_tf.header.stamp = self.get_clock().now().to_msg()
         world_base_tf.header.frame_id = 'world'
         world_base_tf.child_frame_id = 'odom'
-        world_base_tf.transform.translation.x = -5.2
-        world_base_tf.transform.translation.y = -5.2
+        world_base_tf.transform.translation.x = 0.0
+        world_base_tf.transform.translation.y = 0.0
         # height of half box, full stem, 2 radius.: set this from yaml later.
         wheel_radius = 0.3
         platform_ground_height = 1.8
@@ -63,10 +63,9 @@ class turtle_robot(Node):
     
     def goal_pose_sub_func(self,msg):
         self.goal_pose = msg
-        # self.get_logger().info(f"The brick transform is: x: {self.goal_pose.pose.position.x} y: {self.goal_pose.pose.position.y} and z: {self.goal_pose.pose.position.z}")
         # Update vel
         # till reached goal tollerance          
-        dist = math.sqrt( (msg.pose.position.y - self.current_pose.y) **2 +(msg.pose.position.x - self.current_pose.x ) **2 )
+        dist = math.sqrt( (msg.pose.position.y - self.current_pose.y ) **2 +(msg.pose.position.x - self.current_pose.x ) **2 )
         if (dist <= 0.4):
             self.get_logger().info("Stopping the platform !")
             linear_x = 0.0
@@ -86,7 +85,10 @@ class turtle_robot(Node):
         self.tilt_msg = msg
 
     def turtle_pose_sub_func(self,msg):
-        self.current_pose = msg
+        # offset to contain turtlesim in grid.
+        self.current_pose.x = msg.x - 5.54
+        self.current_pose.y = msg.y - 5.54
+
         # Dyn Transform
         base = TransformStamped()
         base.header.frame_id = 'odom'
@@ -94,31 +96,17 @@ class turtle_robot(Node):
         time = self.get_clock().now().to_msg()
         base.header.stamp = time
         # Applying the robot motion here.
-        base.transform.translation = Vector3 ( x = float(msg.x), y = float(msg.y), z= 0.0) 
+        self.get_logger().info(f"the turtle cur pose is x: {msg.x - 5.54} and y: {msg.y - 5.54}")
+        base.transform.translation = Vector3 (x = float(msg.x - 5.54), y = float(msg.y - 5.54), z= 0.0) 
         self.broadcaster.sendTransform(base)
         # Odom publisher
         odom_pub_msg = Odometry()
-        odom_pub_msg.pose.pose.position.x = msg.x + 5.2
-        odom_pub_msg.pose.pose.position.y = msg.y + 5.2
+        odom_pub_msg.pose.pose.position.x = msg.x - 5.54
+        odom_pub_msg.pose.pose.position.y = msg.y - 5.54 
         odom_pub_msg.header.stamp = self.get_clock().now().to_msg()
         odom_pub_msg.header.frame_id = 'odom'
         odom_pub_msg.child_frame_id = 'base_link'
         self.odom_publisher.publish(odom_pub_msg)
-
-
-    def calcute_updated_vel(self, pose):
-        # initial pose of robot.
-        updated_pose = [0.0,0.0,0.0]
-        # till reached goal tollerance  
-        if (self.goal_pose.pose.position.x != 0 and self.goal_pose.pose.position.y != 0 and self.goal_pose.pose.position.z != 0 ):            
-            dt = self.frequency
-            # 5.2 is the odom - world frame
-            theta = math.atan( (self.goal_pose.pose.position.y + 5.2) / (self.goal_pose.pose.position.x + 5.2) ) 
-            updated_pose[0] = pose[0] + self.max_velocity * math.cos(theta) * dt
-            updated_pose[1] = pose[1] + self.max_velocity * math.sin(theta) * dt
-            # self.get_logger().info(f"The brick transform is: x: {self.goal_pose.pose.position.x} y: {self.goal_pose.pose.position.y} and z: {self.goal_pose.pose.position.z}")
-        return updated_pose     
- 
 
     def timer_callback(self):
         # JSP
