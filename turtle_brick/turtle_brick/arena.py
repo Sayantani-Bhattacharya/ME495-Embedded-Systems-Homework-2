@@ -8,6 +8,7 @@ from builtin_interfaces.msg import Duration
 from turtle_brick.physics import World
 from tf2_ros import TransformBroadcaster
 from geometry_msgs.msg import TransformStamped, Vector3
+from tf2_ros import Buffer, TransformListener, TransformBroadcaster, TransformException
 from turtle_brick_interfaces.srv import Place, Gravity
 import time
 
@@ -44,6 +45,14 @@ class arena(Node):
         self.pub5 = self.create_publisher(Marker, 'visualization_marker', markerQoS)
         brick_marker = Marker()
         self.timer = self.create_timer(self.frequency, self.timer_callback)
+
+        self.platform_tf_buffer = Buffer()
+        self.platform_tf_listner = TransformListener(buffer=self.platform_tf_buffer, node=self)
+        self.platform_broadcaster = TransformBroadcaster(self)
+
+        self.platform_brick_tf_buffer = Buffer()
+        self.platform_brick_tf_listner = TransformListener(buffer=self.platform_brick_tf_buffer, node=self)
+        self.platform_brick_tf_broadcaster = TransformBroadcaster(self)
 
     def create_wall_marker(self,id, position, length = 11.0, thickness=0.20, height=1.5):
         wall_1 = Marker()
@@ -95,6 +104,20 @@ class arena(Node):
         brick_marker.color.a = 1.0
         self.pub5.publish(brick_marker)
 
+    def get_platform_transform(self):
+        try:
+            transform = self.platform_tf_buffer.lookup_transform('world', 'platform', rclpy.time.Time())                        
+        except TransformException as ex:
+            return
+        return transform
+    
+    def get_brick_platform_transform(self):
+        try:
+            transform = self.platform_brick_tf_buffer.lookup_transform('platform', 'brick', rclpy.time.Time())                        
+        except TransformException as ex:
+            return
+        return transform
+
     def place_func(self, request, response):
         self.brick_init_pose = request.pose
         # Brick transform
@@ -120,6 +143,9 @@ class arena(Node):
         return response
 
     def timer_callback(self):
+        brick_platform_transform = self.get_brick_platform_transform()
+        platform_transform = self.get_platform_transform()
+
 
         if (self.brick.state == State.EXISTS):
             time = self.get_clock().now().to_msg()
@@ -130,6 +156,8 @@ class arena(Node):
             # Pose update
             self.updated_brick_pose = self.world.drop()
             # self.get_logger().info(f"Started dropping at x: {self.updated_brick_pose[0]} y: {self.updated_brick_pose[1]} and z {self.updated_brick_pose[2]}")  
+            if (brick_platform_transform.transform.translation.z <= 0.03):                
+                self.brick.state == State.DROPPED_ON_PLATFORM            
             if (self.updated_brick_pose[2] <= 0.6) :
                self.get_logger().info(f"Stopped dropping ")
                self.updated_brick_pose[2] = 0.0
@@ -150,6 +178,27 @@ class arena(Node):
             # Marker update
             self.brick_marker_define(self.updated_brick_pose)
 
+        elif (self.brick.state == State.DROPPED_ON_PLATFORM):
+            self.get_logger().info("Catched [Brick] !" )
+            # # Setting the new pose
+
+            # # self.world.brick = self.updated_brick_pose ///
+
+            # # Tranform update
+            # base = TransformStamped()
+            # base.header.frame_id = 'platform'
+            # base.child_frame_id = 'brick'
+
+            # # platform_transform --- use this here.
+            # time = self.get_clock().now().to_msg()
+            # base.header.stamp = time       
+            # base.transform.translation = Vector3 ( x = float(self.updated_brick_pose[0]), y = float(self.updated_brick_pose[1]), z=float(self.updated_brick_pose[2])) 
+            # self.broadcaster.sendTransform(base)
+            # self.brick.transform_setter(base)        
+            # # Marker update
+            # self.brick_marker_define(self.updated_brick_pose)
+
+
         elif(self.brick.state == State.DROPPED_ON_GROUND):
             # To keep it on ground.
             # Tranform update
@@ -164,11 +213,6 @@ class arena(Node):
             self.brick.transform_setter(base)        
             # Marker update
             self.brick_marker_define(self.updated_brick_pose)
-
-
-
-            # fall till cases !
-
 
 class State(Enum):
     ABSENT = 0

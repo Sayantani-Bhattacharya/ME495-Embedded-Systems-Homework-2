@@ -53,7 +53,7 @@
         <box size="${base_block_height} ${base_block_height} ${base_block_height}" />
       </geometry>
       <material name="Greenish">
-        <color rgba="0.58 0.651 0.235 1.0"/>
+        <color rgba="0.035 0.612 0.333 1.0"/>
       </material>
     </visual>
   </link> 

@@ -19,7 +19,8 @@ class turtle_robot(Node):
     def __init__(self):
         super().__init__('turtle_robot') 
         self.frequency = 0.004
-        self.max_velocity = 1
+        self.max_velocity = 3
+
         self.joint_state_publisher = self.create_publisher(JointState, '/joint_states', 10)        
         #callback_group=self.callBackGrp
         self.odom_publisher = self.create_publisher(Odometry, '/odom', 10)
@@ -29,7 +30,7 @@ class turtle_robot(Node):
         self.turtle_pose_msg_sub = self.create_subscription(Pose,'/turtle1/pose', self.turtle_pose_sub_func, qos_profile=10 )
         self.goal_pose = PoseStamped()
         # self.tilt_msg = Tilt()
-        self.turtle_pose_msg = Pose()
+        self.current_pose = Pose()
         self.updated_pose = [0.0,0.0,0.0]
         
         # Transforms:
@@ -62,13 +63,48 @@ class turtle_robot(Node):
     
     def goal_pose_sub_func(self,msg):
         self.goal_pose = msg
-        self.get_logger().info(f"The brick transform is: x: {self.goal_pose.pose.position.x} y: {self.goal_pose.pose.position.y} and z: {self.goal_pose.pose.position.z}")
-
+        # self.get_logger().info(f"The brick transform is: x: {self.goal_pose.pose.position.x} y: {self.goal_pose.pose.position.y} and z: {self.goal_pose.pose.position.z}")
+        # Update vel
+        # till reached goal tollerance          
+        dist = math.sqrt( (msg.pose.position.y - self.current_pose.y) **2 +(msg.pose.position.x - self.current_pose.x ) **2 )
+        if (dist <= 0.4):
+            self.get_logger().info("Stopping the platform !")
+            linear_x = 0.0
+            linear_y = 0.0
+        else:
+            self.get_logger().info("Moving the platform [Turtle-node] !")
+            theta = math.atan( (msg.pose.position.y - self.current_pose.y) / (msg.pose.position.x - self.current_pose.x ) ) 
+            linear_x = self.max_velocity * math.cos(theta)
+            linear_y = self.max_velocity * math.sin(theta)
+        # Cmd pub
+        cmd_pub_msg = Twist()
+        cmd_pub_msg.linear = Vector3 ( x = float(linear_x), y= float(linear_y), z= 0.0)
+        self.cmd_publisher.publish(cmd_pub_msg)
+    
+    
     def tilt_msg_sub_func(self,msg):
         self.tilt_msg = msg
 
     def turtle_pose_sub_func(self,msg):
-        self.turtle_pose_msg = msg
+        self.current_pose = msg
+        # Dyn Transform
+        base = TransformStamped()
+        base.header.frame_id = 'odom'
+        base.child_frame_id = 'base_link'
+        time = self.get_clock().now().to_msg()
+        base.header.stamp = time
+        # Applying the robot motion here.
+        base.transform.translation = Vector3 ( x = float(msg.x), y = float(msg.y), z= 0.0) 
+        self.broadcaster.sendTransform(base)
+        # Odom publisher
+        odom_pub_msg = Odometry()
+        odom_pub_msg.pose.pose.position.x = msg.x + 5.2
+        odom_pub_msg.pose.pose.position.y = msg.y + 5.2
+        odom_pub_msg.header.stamp = self.get_clock().now().to_msg()
+        odom_pub_msg.header.frame_id = 'odom'
+        odom_pub_msg.child_frame_id = 'base_link'
+        self.odom_publisher.publish(odom_pub_msg)
+
 
     def calcute_updated_vel(self, pose):
         # initial pose of robot.
@@ -80,30 +116,11 @@ class turtle_robot(Node):
             theta = math.atan( (self.goal_pose.pose.position.y + 5.2) / (self.goal_pose.pose.position.x + 5.2) ) 
             updated_pose[0] = pose[0] + self.max_velocity * math.cos(theta) * dt
             updated_pose[1] = pose[1] + self.max_velocity * math.sin(theta) * dt
-            self.get_logger().info(f"The brick transform is: x: {self.goal_pose.pose.position.x} y: {self.goal_pose.pose.position.y} and z: {self.goal_pose.pose.position.z}")
-            self.get_logger().info(f"The updated pose is: x: {updated_pose[0]} y: {updated_pose[1]} and z: {updated_pose[2]}")
-
+            # self.get_logger().info(f"The brick transform is: x: {self.goal_pose.pose.position.x} y: {self.goal_pose.pose.position.y} and z: {self.goal_pose.pose.position.z}")
         return updated_pose     
  
 
     def timer_callback(self):
-        # Cal pose
-        self.updated_pose = self.calcute_updated_vel([self.updated_pose[0], self.updated_pose[1], self.updated_pose[2]])  
-
-        # till reached goal tollerance     
-
-        # Dyn Transform
-        base = TransformStamped()
-        base.header.frame_id = 'odom'
-        base.child_frame_id = 'base_link'
-        time = self.get_clock().now().to_msg()
-        base.header.stamp = time
-
-        # Applying the robot motion here.
-        base.transform.translation = Vector3 ( x = float(self.updated_pose[0]), y = float(self.updated_pose[1]), z= 0.0) 
-        # base.transform.translation = Vector3 ( x = float(self.turtle_pose_msg.x), y = float(self.turtle_pose_msg.y), z=0.0) 
-        self.broadcaster.sendTransform(base)
-
         # JSP
         self.joint_state.header.stamp = self.get_clock().now().to_msg()
         self.joint_positions[1] = 0.02 
@@ -112,26 +129,6 @@ class turtle_robot(Node):
         self.joint_positions[3] = theta_dummy
         self.joint_state.position = self.joint_positions
         self.joint_state_publisher.publish(self.joint_state)
-
-        # Cmd pub
-        cmd_pub_msg = Twist()
-        cmd_pub_msg.linear = Vector3 ( x = float(self.updated_pose[0]), y= float(self.updated_pose[1]), z= 0.0)
-        self.cmd_publisher.publish(cmd_pub_msg)
-
-        # # Odom publisher
-        # odom_pub_msg = Odometry()
-        # odom_pose = Point()
-        # odom_pose.x = 1
-        # odom_pose.y = 2
-        # odom_pose.z = 1
-        # odom_pub_msg.pose.pose.position(odom_pose)  # # (odom_pose)   ->> prob is here !!
-        # odom_pub_msg.header.stamp = self.get_clock().now().to_msg()
-        # odom_pub_msg.header.frame_id = 'odom'
-        # odom_pub_msg.child_frame_id = 'base_link'
-        # # Twist same as cmd_vel
-        # # odom_pub_msg.twist.twist.linear = Vector3(x=self.linear_velocity, y=0.0, z=0.0)
-        # # odom_pub_msg.twist.twist.angular = Vector3(x=0.0, y=0.0, z=self.angular_velocity)
-        # self.odom_publisher.publish(odom_pub_msg)
 
 def main(args=None):
     rclpy.init(args=args)

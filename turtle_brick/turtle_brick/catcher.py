@@ -6,6 +6,7 @@ from sensor_msgs.msg import JointState
 from geometry_msgs.msg import TransformStamped
 from tf2_ros import Buffer, TransformListener, TransformBroadcaster, TransformException
 from geometry_msgs.msg import Twist, Vector3, Point, PoseStamped
+import math
 import time
 
 class robotState(Enum):
@@ -18,9 +19,14 @@ class robotState(Enum):
 class catcher(Node):
 
     def __init__(self):
-        super().__init__('catcher') 
+        super().__init__('catcher')
         self.frequency = 0.04
         self.updated_pose = [0.0,0.0,0.0]
+        self.goal_pose_pub = self.create_publisher(PoseStamped, '/goal_pose', qos_profile=10)
+        self.robot_state = robotState.WAIT
+        self.init_flag = 1 
+        self.brick_exists = False
+        self.init_brick_pose = 1000
 
         # Initialize TF buffers and listeners
         self.brick_tf_buffer = Buffer()
@@ -38,40 +44,36 @@ class catcher(Node):
         self.start_time = time.time()
         self.timer = self.create_timer(self.frequency, self.timer_callback)
 
-
-    # Todo: 1. make the robot move in straight line.
-    # 2. theta  = omega cal
-    # 3. cal error 
-    # 4. stem movement.
-
-    def get_brick_transform(self):
-        
+    def get_brick_transform(self):        
         try:
             transform = self.brick_tf_buffer.lookup_transform('world', 'brick', rclpy.time.Time())
-            self.get_logger().info(f"The brick transform is: x: {transform.transform.translation.x} y: {transform.transform.translation.y} and z: {transform.transform.translation.z}")
+            self.brick_exists = True
+            # self.get_logger().info(f"The brick transform is: x: {transform.transform.translation.x} y: {transform.transform.translation.y} and z: {transform.transform.translation.z}")
         except TransformException as ex:
-            self.get_logger().info(f'Could not transform {'world'} to {'brick'}: {ex}')
-            transform = [0.0 , 0.0, 0.0]       
+            return 
+            
+        # Cal the initial pose of brick
+        if (self.init_flag and self.brick_exists):
+            # if (brick_exists):  
+                self.init_brick_pose = transform.transform.translation.z   
+                self.init_flag = 0           
         return transform
 
     def get_platform_transform(self):
         try:
-            transform = self.platform_tf_buffer.lookup_transform('world', 'platform', rclpy.time.Time())
-            self.get_logger().info(f"The platform transform is: x: {transform.transform.translation.x} y: {transform.transform.translation.y} and z: {transform.transform.translation.z}")
+            transform = self.platform_tf_buffer.lookup_transform('world', 'platform', rclpy.time.Time())                        
         except TransformException as ex:
-            self.get_logger().info(f'Could not transform {'world'} to {'platform'}: {ex}')
-            transform = [0.0 , 0.0, 0.0]        
+            # pass
+            return
         return transform
     
     def get_brick_platform_transform(self):
         try:
             transform = self.platform_brick_tf_buffer.lookup_transform('platform', 'brick', rclpy.time.Time())
-            self.get_logger().info(f"The platform-brick transform is: x: {transform.transform.translation.x} y: {transform.transform.translation.y} and z: {transform.transform.translation.z}")
         except TransformException as ex:
-            self.get_logger().info(f'Could not transform {'platform'} to {'brick'}: {ex}')
-            transform = [0.0 , 0.0, 0.0]        
+            return
+            # transform = [-1.0 , -1.0, -1.0]       
         return transform
-
 
     def timer_callback(self):
         self.get_logger().info("publish speed" ,once=True)
@@ -79,10 +81,44 @@ class catcher(Node):
         platform_transform = self.get_platform_transform()
         brick_platform_transform = self.get_brick_platform_transform()
 
+        # To detect drop:   
+        # self.get_logger().info(f"brick 1 :: {self.brick_exists}")      
+        if (self.brick_exists and self.robot_state == robotState.WAIT):
+            self.currZ = brick_transform.transform.translation.z
+            if (self.init_brick_pose - self.currZ >= 0.09):
+                self.get_logger().info("Started to Drop !" )
+                self.robot_state = robotState.MOVE
 
-        
-        
-    
+        # Publish the goal pose.
+        if (self.robot_state == robotState.MOVE):
+            goal_pose_pub_msg = PoseStamped()
+            goal_pose_pub_msg.header.stamp = self.get_clock().now().to_msg()
+            dist = math.sqrt( brick_platform_transform.transform.translation.y **2 + brick_platform_transform.transform.translation.x **2 )
+            if (dist <= 0.4):
+                self.robot_state = robotState.CATCHED
+                self.get_logger().info("Catched [Platform motion] !" )
+                goal_pose_pub_msg.pose.position.x = brick_transform.transform.translation.x
+                goal_pose_pub_msg.pose.position.y = brick_transform.transform.translation.y
+                self.goal_pose_pub.publish(goal_pose_pub_msg) 
+
+            # Stick brick to robot.
+            elif (brick_transform != [-1.0 , -1.0, -1.0] and self.robot_state != robotState.CATCHED):
+                self.get_logger().info("About to Catch!" )
+                goal_pose_pub_msg.pose.position.x = brick_transform.transform.translation.x
+                goal_pose_pub_msg.pose.position.y = brick_transform.transform.translation.y
+                goal_pose_pub_msg.pose.position.z = brick_transform.transform.translation.z
+                self.goal_pose_pub.publish(goal_pose_pub_msg) 
+                
+        elif(self.robot_state == robotState.CATCHED):
+            goal_pose_pub_msg = PoseStamped()
+            goal_pose_pub_msg.header.stamp = self.get_clock().now().to_msg()
+            self.get_logger().info("Catched [Platform motion] Platform stopped !" )
+            goal_pose_pub_msg.pose.position.x = brick_transform.transform.translation.x
+            goal_pose_pub_msg.pose.position.y = brick_transform.transform.translation.y
+            # goal_pose_pub_msg.pose.position.z = 
+            self.goal_pose_pub.publish(goal_pose_pub_msg)
+
+
 
 def main(args=None):
     rclpy.init(args=args)

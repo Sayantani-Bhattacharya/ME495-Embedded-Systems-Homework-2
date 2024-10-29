@@ -1,12 +1,12 @@
 <launch>
-    <node pkg="turtlesim" exec="turtlesim_node" name="roving_turtle" />
-    <!-- args="holonomic:=True -->
+    <node pkg="turtlesim" exec="turtlesim_node" name="roving_turtle" >
+        <param name="holonomic" value="true" />
+    </node>  
 
-
-    <node pkg="turtle_brick" exec="turtle_robot" name="turtle_robot" />
+    <node pkg="turtle_brick" exec="turtle_robot" name="turtle_robot" >
         <!-- <param name="velocity" value="1.5" /> -->
-        <!-- <remap from="cmd_vel" to="turtle1/cmd_vel" /> -->
-   <!-- </node> -->
+        <remap from="/cmd_vel" to="/turtle1/cmd_vel" />
+   </node>
 
    <node pkg="turtle_brick" exec="arena" name="arena" />
   
