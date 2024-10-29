@@ -129,7 +129,7 @@ class arena(Node):
         elif (self.brick.state == State.FALLING):            
             # Pose update
             self.updated_brick_pose = self.world.drop()
-            self.get_logger().info(f"Started dropping at x: {self.updated_brick_pose[0]} y: {self.updated_brick_pose[1]} and z {self.updated_brick_pose[2]}")  
+            # self.get_logger().info(f"Started dropping at x: {self.updated_brick_pose[0]} y: {self.updated_brick_pose[1]} and z {self.updated_brick_pose[2]}")  
             if (self.updated_brick_pose[2] <= 0.6) :
                self.get_logger().info(f"Stopped dropping ")
                self.updated_brick_pose[2] = 0.0
@@ -153,7 +153,7 @@ class arena(Node):
         elif(self.brick.state == State.DROPPED_ON_GROUND):
             # To keep it on ground.
             # Tranform update
-            self.get_logger().info(f"Stopped dropping at x: {self.updated_brick_pose[0]} y: {self.updated_brick_pose[1]} and z {self.updated_brick_pose[2]}")  
+            # self.get_logger().info(f"Stopped dropping at x: {self.updated_brick_pose[0]} y: {self.updated_brick_pose[1]} and z {self.updated_brick_pose[2]}")  
             base = TransformStamped()
             base.header.frame_id = 'world'
             base.child_frame_id = 'brick'

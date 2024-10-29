@@ -79,10 +79,9 @@ class turtle_robot(Node):
 
     def timer_callback(self):
 
-        self.get_logger().info(f"goal pose is: {self.goal_pose.pose.position.x} ")
+        # self.get_logger().info(f"goal pose is: {self.goal_pose.pose.position.x} ")
         # Cal pose
         self.updated_pose = self.calcute_updated_vel([self.goal_pose.pose.position.x, self.goal_pose.pose.position.y, self.goal_pose.pose.position.z])       
-        # self.updated_pose[1] = self.updated_pose[1] + 0.1
 
         # Dyn Transform
         base = TransformStamped()
