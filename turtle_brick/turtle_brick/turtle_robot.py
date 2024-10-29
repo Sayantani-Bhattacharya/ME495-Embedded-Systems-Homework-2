@@ -10,10 +10,10 @@ from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
 from .quaternion import angle_axis_to_quaternion
 from turtle_brick_interfaces.srv import Tilt
 from turtlesim.msg import Pose
+import math
 from math import pi
 import time
-
-
+   
 class turtle_robot(Node):
 
     def __init__(self):
@@ -40,8 +40,8 @@ class turtle_robot(Node):
         world_base_tf.header.stamp = self.get_clock().now().to_msg()
         world_base_tf.header.frame_id = 'world'
         world_base_tf.child_frame_id = 'odom'
-        world_base_tf.transform.translation.x = -5.0
-        world_base_tf.transform.translation.y = -5.0
+        world_base_tf.transform.translation.x = -5.2
+        world_base_tf.transform.translation.y = -5.2
         # height of half box, full stem, 2 radius.: set this from yaml later.
         wheel_radius = 0.3
         platform_ground_height = 1.8
@@ -62,6 +62,7 @@ class turtle_robot(Node):
     
     def goal_pose_sub_func(self,msg):
         self.goal_pose = msg
+        self.get_logger().info(f"The brick transform is: x: {self.goal_pose.pose.position.x} y: {self.goal_pose.pose.position.y} and z: {self.goal_pose.pose.position.z}")
 
     def tilt_msg_sub_func(self,msg):
         self.tilt_msg = msg
@@ -70,18 +71,26 @@ class turtle_robot(Node):
         self.turtle_pose_msg = msg
 
     def calcute_updated_vel(self, pose):
+        # initial pose of robot.
         updated_pose = [0.0,0.0,0.0]
-        dt = self.frequency
-        updated_pose[0] = pose[0] + self.max_velocity * dt
-        updated_pose[1] = pose[1] + self.max_velocity * dt        
+        # till reached goal tollerance  
+        if (self.goal_pose.pose.position.x != 0 and self.goal_pose.pose.position.y != 0 and self.goal_pose.pose.position.z != 0 ):            
+            dt = self.frequency
+            # 5.2 is the odom - world frame
+            theta = math.atan( (self.goal_pose.pose.position.y + 5.2) / (self.goal_pose.pose.position.x + 5.2) ) 
+            updated_pose[0] = pose[0] + self.max_velocity * math.cos(theta) * dt
+            updated_pose[1] = pose[1] + self.max_velocity * math.sin(theta) * dt
+            self.get_logger().info(f"The brick transform is: x: {self.goal_pose.pose.position.x} y: {self.goal_pose.pose.position.y} and z: {self.goal_pose.pose.position.z}")
+            self.get_logger().info(f"The updated pose is: x: {updated_pose[0]} y: {updated_pose[1]} and z: {updated_pose[2]}")
+
         return updated_pose     
  
 
     def timer_callback(self):
-
-        # self.get_logger().info(f"goal pose is: {self.goal_pose.pose.position.x} ")
         # Cal pose
-        self.updated_pose = self.calcute_updated_vel([self.goal_pose.pose.position.x, self.goal_pose.pose.position.y, self.goal_pose.pose.position.z])       
+        self.updated_pose = self.calcute_updated_vel([self.updated_pose[0], self.updated_pose[1], self.updated_pose[2]])  
+
+        # till reached goal tollerance     
 
         # Dyn Transform
         base = TransformStamped()
@@ -89,13 +98,13 @@ class turtle_robot(Node):
         base.child_frame_id = 'base_link'
         time = self.get_clock().now().to_msg()
         base.header.stamp = time
+
         # Applying the robot motion here.
-        base.transform.translation = Vector3 ( x = float(self.updated_pose[0]), y = float(self.updated_pose[1]), z=0.0) 
+        base.transform.translation = Vector3 ( x = float(self.updated_pose[0]), y = float(self.updated_pose[1]), z= 0.0) 
         # base.transform.translation = Vector3 ( x = float(self.turtle_pose_msg.x), y = float(self.turtle_pose_msg.y), z=0.0) 
         self.broadcaster.sendTransform(base)
 
         # JSP
-        # jsp: omega - stem thing.
         self.joint_state.header.stamp = self.get_clock().now().to_msg()
         self.joint_positions[1] = 0.02 
         theta_dummy = 0.02
@@ -107,7 +116,6 @@ class turtle_robot(Node):
         # Cmd pub
         cmd_pub_msg = Twist()
         cmd_pub_msg.linear = Vector3 ( x = float(self.updated_pose[0]), y= float(self.updated_pose[1]), z= 0.0)
-        # cmd_pub_msg.angular = Vector3 ( x = 0.0, y= 0.0, z= self.turtle_pose_msg.angular_velocity )
         self.cmd_publisher.publish(cmd_pub_msg)
 
         # # Odom publisher
@@ -124,7 +132,6 @@ class turtle_robot(Node):
         # # odom_pub_msg.twist.twist.linear = Vector3(x=self.linear_velocity, y=0.0, z=0.0)
         # # odom_pub_msg.twist.twist.angular = Vector3(x=0.0, y=0.0, z=self.angular_velocity)
         # self.odom_publisher.publish(odom_pub_msg)
-    
 
 def main(args=None):
     rclpy.init(args=args)
