@@ -7,7 +7,7 @@ from rclpy.qos import QoSDurabilityPolicy, QoSProfile
 from builtin_interfaces.msg import Duration
 from turtle_brick.physics import World
 from tf2_ros import TransformBroadcaster
-from geometry_msgs.msg import TransformStamped, Vector3
+from geometry_msgs.msg import TransformStamped, Vector3, Point
 from tf2_ros import Buffer, TransformListener, TransformBroadcaster, TransformException
 from turtle_brick_interfaces.srv import Place, Gravity
 import time
@@ -139,13 +139,13 @@ class arena(Node):
         gravity = float(request.gravity.data)
         self.brick.state = State.FALLING
         # self.brick_init_pose will not exist if place is not called before drop.
-        self.world = World(brick_pose=[self.brick_init_pose.x,self.brick_init_pose.y,self.brick_init_pose.z], gravity=gravity)        
+        self.world = World(brick_pose=[self.brick_init_pose.x,self.brick_init_pose.y,self.brick_init_pose.z])        
         return response
+        
 
     def timer_callback(self):
         brick_platform_transform = self.get_brick_platform_transform()
-        platform_transform = self.get_platform_transform()
-
+        platform_transform = self.get_platform_transform()      
 
         if (self.brick.state == State.EXISTS):
             time = self.get_clock().now().to_msg()

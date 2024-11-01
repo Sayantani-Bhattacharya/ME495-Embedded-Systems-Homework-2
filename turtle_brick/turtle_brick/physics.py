@@ -1,7 +1,7 @@
 class World:
     """Keep track of the physics of the world."""
 
-    def __init__(self, brick_pose, gravity=9.81, radius=2.0, dt=0.06):
+    def __init__(self, brick_pose, gravity=9.81, radius=2.0, dt=1/250.0):
         """
         Initialize the world.
 
@@ -17,6 +17,7 @@ class World:
         self.gravity = gravity
         self.platform_radius = radius
         self.dt = dt
+        self.initial_vel = 0.0 
 
     @property
     def brick(self):
@@ -46,9 +47,10 @@ class World:
         """
         updated_brick_pose = [0.0, 0.0, 0.0]
         # From equations of motion
-        self.z = self.z - ( ( self.dt**2 ) * self.gravity/2.0 )
+        self.z = self.z - ( ( self.dt**2 ) * self.gravity/2.0 + self.initial_vel * self.dt)
         updated_brick_pose[0] = self.x
         updated_brick_pose[1] = self.y
         updated_brick_pose[2] = self.z
+        self.initial_vel =  self.initial_vel + self.gravity * self.dt
         return updated_brick_pose
         
