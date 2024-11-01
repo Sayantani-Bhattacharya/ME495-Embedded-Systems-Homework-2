@@ -14,5 +14,5 @@ The pkg is used to visualise the turtle bot inside an arena, and has services to
    <a href="https://github.com/ME495-EmbeddedSystems/homework-2-Sayantani-Bhattacharya/issues/1#issue-2620761607">Watch video on GitHub</a>
 
 5. Here is a video of the turtle when the brick cannot be caught
+   <a href="https://github.com/ME495-EmbeddedSystems/homework-2-Sayantani-Bhattacharya/issues/2#issue-2628285808">Watch video on GitHub</a>
 
-   ${embed video here, it must be playable on github. Upload the video as an issue and link to it}
