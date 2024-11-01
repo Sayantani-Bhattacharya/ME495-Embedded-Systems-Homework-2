@@ -4,6 +4,7 @@ from rclpy.node import Node
 from geometry_msgs.msg import Twist, Vector3, Point, PoseStamped
 from sensor_msgs.msg import JointState
 from nav_msgs.msg import Odometry
+from std_msgs.msg import Empty
 from geometry_msgs.msg import TransformStamped
 from tf2_ros import TransformBroadcaster
 from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
@@ -20,13 +21,14 @@ class turtle_robot(Node):
         super().__init__('turtle_robot') 
         self.frequency = 0.004
         self.max_velocity = 6.0
+        self.tilt_msg = None
 
         self.joint_state_publisher = self.create_publisher(JointState, '/joint_states', 10)        
         #callback_group=self.callBackGrp
         self.odom_publisher = self.create_publisher(Odometry, '/odom', 10)
         self.cmd_publisher = self.create_publisher(Twist, '/cmd_vel', 10)
         self.goal_pose_sub = self.create_subscription(PoseStamped,'/goal_pose', self.goal_pose_sub_func, qos_profile=10 )
-        # self.tilt_msg_sub = self.create_subscription(Tilt,'/tilt_msg', self.tilt_msg_sub_func, qos_profile=10 )
+        self.tilt_msg_sub = self.create_subscription(Empty,'/tilt_msg', self.tilt_msg_sub_func, qos_profile=10 )
         self.turtle_pose_msg_sub = self.create_subscription(Pose,'/turtle1/pose', self.turtle_pose_sub_func, qos_profile=10 )
         self.goal_pose = PoseStamped()
         # self.tilt_msg = Tilt()
@@ -53,10 +55,10 @@ class turtle_robot(Node):
         # Dynamic broadcaster publishes on /tf.
         self.broadcaster = TransformBroadcaster(self)
 
-        # Joint states
-        self.joint_state = JointState()
-        self.joint_state.name = ["j0","j1","j2","j3"]
-        self.joint_positions = [0.0, 0.0, 0.0, 0.0]
+        # # Joint states
+        # self.joint_state = JointState()
+        # self.joint_state.name = ["j0","j1","j2","j3"]
+        # self.joint_positions = [0.0, 0.0, 0.0, 0.0]
 
         self.start_time = time.time() 
         self.timer = self.create_timer(self.frequency, self.timer_callback)
@@ -71,18 +73,18 @@ class turtle_robot(Node):
             linear_x = 0.0
             linear_y = 0.0
         else:
-            self.get_logger().info("Moving the platform [Turtle-node] !", once=True)
             theta = math.atan( (msg.pose.position.y - self.current_pose.y) / (msg.pose.position.x - self.current_pose.x ) ) 
             linear_x = self.max_velocity * math.cos(theta)
             linear_y = self.max_velocity * math.sin(theta)
+
         # Cmd pub
         cmd_pub_msg = Twist()
         cmd_pub_msg.linear = Vector3 ( x = float(linear_x), y= float(linear_y), z= 0.0)
         self.cmd_publisher.publish(cmd_pub_msg)
-    
+
     
     def tilt_msg_sub_func(self,msg):
-        self.tilt_msg = msg
+        self.tilt_msg = msg        
 
     def turtle_pose_sub_func(self,msg):
         # offset to contain turtlesim in grid.
@@ -108,12 +110,17 @@ class turtle_robot(Node):
         self.odom_publisher.publish(odom_pub_msg)
 
     def timer_callback(self):
-        # JSP
-        self.joint_state.header.stamp = self.get_clock().now().to_msg()
-        self.joint_positions[1] = 0.02 
-        theta_dummy = 0.02
-        # wheel rotation here.        
-        self.joint_positions[3] = theta_dummy
+        self.joint_state = JointState()
+        self.joint_state.name = ["j0","j1","j2","j3"]
+        self.joint_positions = [0.0, 0.0, 0.0, 0.0]
+        if self.tilt_msg:
+            self.joint_state.header.stamp = self.get_clock().now().to_msg()
+            self.get_logger().info( f"Tilt is triggered {self.tilt_msg}")
+            self.joint_positions[2] = 1.0
+            self.joint_positions[1] = 1.0
+        else:
+            self.joint_state.header.stamp = self.get_clock().now().to_msg()
+            self.joint_positions[2] = 0.0
         self.joint_state.position = self.joint_positions
         self.joint_state_publisher.publish(self.joint_state)
 

@@ -156,7 +156,7 @@ class arena(Node):
             # Pose update
             self.updated_brick_pose = self.world.drop()
             if (brick_platform_transform.transform.translation.z <= 0.1): 
-                self.brick.state == State.DROPPED_ON_PLATFORM  
+                self.brick.state = State.DROPPED_ON_PLATFORM  
             elif (self.updated_brick_pose[2] <= 0.6) :
                self.get_logger().info(f"Stopped dropping ", once=True)
                self.updated_brick_pose[2] = 0.0
@@ -179,6 +179,7 @@ class arena(Node):
 
         elif (self.brick.state == State.DROPPED_ON_PLATFORM):
             self.get_logger().info("Catched [Brick] !", once=True)
+            self.get_logger().info(" At Catched case [Arena node]!", once=True )
             # Setting the new pose, offset : platform height/2 n brick edge/2
             self.updated_brick_pose[2] = float(platform_transform.transform.translation.z + 0.2)
             self.world.brick = self.updated_brick_pose  
@@ -192,7 +193,7 @@ class arena(Node):
             self.broadcaster.sendTransform(base)
             self.brick.transform_setter(base)        
             # Marker update
-            self.brick_marker_define(float(self.updated_brick_pose))
+            self.brick_marker_define(self.updated_brick_pose)
 
         elif(self.brick.state == State.DROPPED_ON_GROUND):
             self.get_logger().info("Dropped on gound [Brick] !", once=True)

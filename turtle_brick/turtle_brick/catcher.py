@@ -3,10 +3,12 @@ import rclpy
 from rclpy.node import Node
 from enum import Enum
 from sensor_msgs.msg import JointState
+from std_msgs.msg import Empty
 from geometry_msgs.msg import TransformStamped
 from tf2_ros import Buffer, TransformListener, TransformBroadcaster, TransformException
 from geometry_msgs.msg import Twist, Vector3, Point, PoseStamped
 from visualization_msgs.msg import Marker, MarkerArray
+from turtle_brick_interfaces.srv import Tilt
 import math
 import time
 
@@ -15,8 +17,9 @@ class robotState(Enum):
     MOVE = 1,
     WAITING_FOR_BRICK = 2,
     CATCHED = 3,
-    TILT = 4,
-    SLIPPED = 5
+    GOING_TO_HOME = 4,
+    TILT = 5,
+    SLIPPED = 6
    
 class catcher(Node):
 
@@ -26,6 +29,8 @@ class catcher(Node):
         self.updated_pose = [0.0,0.0,0.0]
         self.goal_pose_pub = self.create_publisher(PoseStamped, '/goal_pose', qos_profile=10)
         self.text_marker_pub = self.create_publisher(Marker, 'text_marker', 10)
+        self.tilt_pub = self.create_publisher(Empty, '/tilt_msg', 10)
+
         self.achivability = True
         self.robot_state = robotState.WAIT
         self.init_flag = 1 
@@ -84,10 +89,8 @@ class catcher(Node):
         if(transform):
             # Assuming gravity to be 9.8
             h = transform.transform.translation.z
-            self.get_logger().info(f"Published h values {h}", once = True)
             if h < 0 :
                 h = -1 * h
-            self.get_logger().info(f"Published new h values {h}", once = True)
             time_needed_by_brick = math.sqrt(2*h /  9.8)
 
             dist = math.sqrt(transform.transform.translation.x**2 + transform.transform.translation.y**2)
@@ -98,8 +101,6 @@ class catcher(Node):
                 self.check_once_achivability = True
                 if (time_needed_by_brick <= time_needed_by_bot + error_tollerance):
                     self.achivability = False
-                self.get_logger().info(f"chiedeiwdndkffmvl value is  {self.achivability}", once = True)
-                
             
             if (not self.achivability):
                 marker_msg = Marker()        
@@ -120,12 +121,11 @@ class catcher(Node):
                 # Publish the marker
                 self.text_marker_pub.publish(marker_msg)
                 self.get_logger().info("Published text marker")
-                # self.achivability = False
             else:
                 self.get_logger().info("Achivable!!", once=True)
 
     def timer_callback(self):
-        self.get_logger().info("publish speed" ,once=True)
+        self.get_logger().info("publish" ,once=True)
         brick_transform = self.get_brick_transform()
         platform_transform = self.get_platform_transform()
         brick_platform_transform = self.get_brick_platform_transform()
@@ -161,8 +161,10 @@ class catcher(Node):
                     goal_pose_pub_msg.pose.position.z = brick_transform.transform.translation.z
                     self.goal_pose_pub.publish(goal_pose_pub_msg) 
                     
-            elif(self.robot_state == robotState.WAITING_FOR_BRICK):            
-                if (brick_transform.transform.translation.z <= 0.2):
+            elif(self.robot_state == robotState.WAITING_FOR_BRICK):
+                self.get_logger().info(f" H val [Platform motion] {brick_transform.transform.translation.z} !", once = True )
+                # 1.8 : brick and platform height : need to parameterise it.
+                if (brick_transform.transform.translation.z <= 1.9):
                     self.get_logger().info(" Catched !", once=True )
                     self.robot_state = robotState.CATCHED
                 else:
@@ -173,6 +175,28 @@ class catcher(Node):
                     goal_pose_pub_msg.pose.position.y = brick_transform.transform.translation.y
                     self.goal_pose_pub.publish(goal_pose_pub_msg)
 
+            elif(self.robot_state == robotState.CATCHED ):
+                self.get_logger().info(" At Catched case [catcher node]!", once=True )
+                self.robot_state = robotState.TILT
+
+            # Going to home has an issue with movement direction.
+            elif (self.robot_state == robotState.GOING_TO_HOME):
+                self.get_logger().info(" Bot going to home [catcher node]!", once=True )
+                goal_pose_pub_msg = PoseStamped()
+                goal_pose_pub_msg.header.stamp = self.get_clock().now().to_msg()
+                goal_pose_pub_msg.pose.position.x = 2.0
+                goal_pose_pub_msg.pose.position.y = 2.0
+                self.goal_pose_pub.publish(goal_pose_pub_msg)
+                dist_to_home = math.sqrt(platform_transform.transform.translation.x**2  +  platform_transform.transform.translation.y**2)
+                if (dist_to_home < 0.4):
+                    self.get_logger().info("Bot reached Home [catcher node]!",once=True )
+                    self.robot_state = robotState.TILT
+
+            elif(self.robot_state == robotState.TILT):
+                    self.get_logger().info("Tilting now [catcher node]!",once=True )
+                    tilt_trigger_msg = Empty()
+                    # publish tilt.
+                    self.tilt_pub.publish(tilt_trigger_msg)
 
 def main(args=None):
     rclpy.init(args=args)
